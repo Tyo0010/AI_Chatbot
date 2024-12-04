@@ -1,6 +1,8 @@
 # Ignore virtual environment
 venv/
 
+migrations/
+
 # General Python ignores
 __pycache__/
 *.py[cod]

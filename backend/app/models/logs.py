@@ -18,6 +18,9 @@ class Logs(db.Model):
          db.DateTime() 
     )
     
+    
+    
+    
     def serialize(self):
         return{
             "id": self.id,

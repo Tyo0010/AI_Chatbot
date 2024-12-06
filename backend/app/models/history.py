@@ -12,11 +12,11 @@ class History(db.Model):
         nullable=False
     )
     message = db.Column(
-        db.String(16000000),
+        db.TEXT,
         nullable=False
     )
     response = db.Column(
-        db.String(16000000),
+        db.TEXT,
         nullable=False
     )
     timestamp = db.Column(

@@ -11,15 +11,12 @@ class Logs(db.Model):
         nullable=False
     )
     message = db.Column(
-        db.String(16000000),
+        db.TEXT,
         nullable=False
     )
     created_at = db.Column(
          db.DateTime() 
     )
-    
-    
-    
     
     def serialize(self):
         return{

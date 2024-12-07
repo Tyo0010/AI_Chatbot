@@ -27,7 +27,8 @@ class Preference(db.Model):
         default=True
     )
     updated_time = db.Column(
-        db.DateTime()
+        db.DateTime(timezone=True), 
+        server_default=db.func.now()
     )
     
     user=db.relationship("User")

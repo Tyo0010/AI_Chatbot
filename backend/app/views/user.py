@@ -2,7 +2,8 @@ from flask import abort, jsonify, request
 from app import db
 from app.views import blueprint
 from app.models.users import User
-from flask_jwt_extended import create_access_token, create_refresh_token
+from app.models.preference import Preference
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 
 @blueprint.route('/sign_up', methods=['POST'])
 def sign_up():
@@ -32,6 +33,12 @@ def sign_up():
     )
     new_user.set_password(_password)  # Hash and store the password
     db.session.add(new_user)
+    db.session.commit()
+    
+    new_preference = Preference(
+        user_id=new_user.id
+    )
+    db.session.add(new_preference)
     db.session.commit()
 
     return jsonify(new_user.serialize()), 201
@@ -68,8 +75,11 @@ def login():
         abort(401, "Invalid password")
 
     # Generate access and refresh tokens
-    access_token = create_access_token(identity=_username)
-    refresh_token = create_refresh_token(identity=_username)
+    # If credentials are correct, create tokens with user ID as identity
+    access_token = create_access_token(identity=str(exist_user.id))
+    refresh_token = create_refresh_token(identity=str(exist_user.id))
+
+
 
     return jsonify(
         msg="Login successful",
@@ -79,7 +89,15 @@ def login():
     
 
 @blueprint.route('/users/<int:user_id>', methods=['GET'])
+@jwt_required()
 def user_details(user_id):
+    current_user_id = int(get_jwt_identity())
+
+    
+    # Check if the current user's ID matches the requested user ID
+    if current_user_id != user_id:
+        abort(403, "You are not authorized to view this user's details.")
+    
     # Query the user by ID
     user = User.query.get(user_id)
 
@@ -89,3 +107,71 @@ def user_details(user_id):
 
     # Serialize the user data and return as JSON
     return jsonify(user.serialize()), 200
+
+
+@blueprint.route('/update_user/<int:user_id>', methods=['PUT'])
+@jwt_required()
+def update_user(user_id):
+    current_user_id = get_jwt_identity()
+
+    # Ensure we work with an integer if identity is stored as a string
+    try:
+        current_user_id = int(current_user_id)
+    except ValueError:
+        abort(401, "Invalid token identity")
+        
+    if not request.json:
+        abort(400, 'Request must be in JSON format')
+        
+    def _validate() -> bool:
+        required_fields = ["username", "email", "password"]
+        # If none of the required fields are present, this returns True
+        return not any(field in request.json for field in required_fields)
+    
+    # If _validate() is True, that means no fields were provided at all
+    if _validate():
+        abort(400, "All fields are missing")
+        
+    _username = request.json.get('username')
+    _email = request.json.get('email')
+    _password = request.json.get('password')
+    
+    existing_user = User.query.get(user_id)
+    
+    if not existing_user:
+        abort(404, "User not found")
+        
+    if _username is not None:
+        existing_user.username = _username
+    if _email is not None:
+        existing_user.email = _email
+    if _password is not None:
+        # Assuming User model has a set_password method for hashing
+        existing_user.set_password(_password)
+        
+    db.session.commit()
+
+    return jsonify(existing_user.serialize()), 200
+
+@blueprint.route('/delete_user/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def delete_user(user_id):
+    current_user_id = get_jwt_identity()
+
+    # Ensure we work with an integer if identity is stored as a string
+    try:
+        current_user_id = int(current_user_id)
+    except ValueError:
+        abort(401, "Invalid token identity")
+        
+    if current_user_id != user_id:
+        abort(403, "You are not authorized to delete this user.")
+
+    user = User.query.get(user_id)
+    if not user:
+        abort(404, "User not found")
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({"msg": "User deleted successfully"}), 200

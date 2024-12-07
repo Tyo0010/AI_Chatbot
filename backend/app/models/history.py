@@ -20,7 +20,8 @@ class History(db.Model):
         nullable=False
     )
     timestamp = db.Column(
-        db.DateTime() 
+        db.DateTime(timezone=True), 
+        server_default=db.func.now() 
     )
     
     user = db.relationship("User")

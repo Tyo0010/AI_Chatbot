@@ -15,7 +15,8 @@ class Logs(db.Model):
         nullable=False
     )
     created_at = db.Column(
-         db.DateTime() 
+        db.DateTime(timezone=True), 
+        server_default=db.func.now()
     )
     
     def serialize(self):
